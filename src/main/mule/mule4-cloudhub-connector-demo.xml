@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:cloudhub="http://www.mulesoft.org/schema/mule/cloudhub" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/cloudhub http://www.mulesoft.org/schema/mule/cloudhub/current/mule-cloudhub.xsd">
+    <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="bad60170-e516-4553-a88b-9fb0ad4231e3" >
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="7541326a-5918-439c-8063-d9917e9941a0" >
+        <http:request-connection protocol="HTTPS" host="jsonplaceholder.typicode.com" />
+    </http:request-config>
+    <cloudhub:config name="CloudHub_Config" doc:name="CloudHub Config" doc:id="f35ec47d-7c41-4044-bbe3-123fe5e06ce3" >
+        <cloudhub:connection username="platform_username" password="platform_password" environment="env" />
+    </cloudhub:config>
+    <flow name="cloudhub-connector-demo-flow" doc:id="627c6749-bf09-4799-8b9f-3f235b7293df" >
+        <http:listener doc:name="Listener" doc:id="8eb50ea0-bb7c-4c42-bbb8-a5570edca891" config-ref="HTTP_Listener_config" path="/customNotifications"/>
+        <logger level="INFO" doc:name="Logger" doc:id="ad21b2ba-1434-423c-8377-90e6f53b8284" message="#[correlationId]"/>
+        <http:request method="GET" doc:name="Request" doc:id="0a0fc38e-85d1-4b65-950d-a4ba9b4cd165" config-ref="HTTP_Request_configuration" path="/todos/1"/>
+        <raise-error doc:name="Raise error" doc:id="334250b1-7157-4570-aff9-19175a585729" type="DEVT:CUSTOM_ERROR"/>
+        <error-handler >
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="98f3fde8-4e2e-4bae-9a12-bd4f57a136c6" >
+                <cloudhub:create-notification doc:name="Create Notification" doc:id="82a93f96-c5c1-480d-98a3-aa3357b73ff3" config-ref="CloudHub_Config" domain="mule4-cloudhub-connector-demo" priority="ERROR" transactionId="#[uuid()]">
+                    <cloudhub:message ><![CDATA[#["An error occurred while processing customer data"]]]></cloudhub:message>
+                    <cloudhub:custom-properties ><![CDATA[#[output application/java
+---
+{
+	"date" : now(),
+	"customer_id" : "1"
+}]]]></cloudhub:custom-properties>
+                </cloudhub:create-notification>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+</mule>
